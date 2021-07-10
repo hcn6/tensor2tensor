@@ -623,10 +623,13 @@ class Transformer(t2t_model.T2TModel):
       return ret, cache
 
     eos_id = self.get_decode_end_id() or beam_search.EOS_ID
-    temperature = features.get("sampling_temp",
-                               getattr(hparams, "sampling_temp", 0.0))
-    top_k = features.get("sampling_keep_top_k",
-                         getattr(hparams, "sampling_keep_top_k", -1))
+    # temperature = features.get("sampling_temp",
+    #                            getattr(hparams, "sampling_temp", 0.0))
+    # top_k = features.get("sampling_keep_top_k",
+    #                      getattr(hparams, "sampling_keep_top_k", -1))
+
+    temperature = 0.7
+    top_k = 50
 
     ret = fast_decode_tpu(
         encoder_output=encoder_output,

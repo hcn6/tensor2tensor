@@ -2891,23 +2891,15 @@ def _select_top_k(logits, top_k):
   Returns:
     A `Tensor` with same shape  as logits.
   """
-  if top_k != - 1:
+  if top_k != -1:
     vocab_size = logits.shape[-1]
     
-    k_largest = contrib.nn().nth_element(logits, n=top_k - 1, reverse=True)
+    k_largest = tf.math.top_k(logits, top_k).values[:, -1:]
     k_largest = tf.tile(tf.reshape(k_largest, [-1, 1]), [1, vocab_size])
 
     return tf.where(tf.less(logits, k_largest), tf.ones_like(logits)*-1e6, logits)
   else:
     return logits
-  # top_k = tf.where(
-  #     tf.not_equal(top_k, -1), top_k,
-  #     tf.ones_like(top_k) * vocab_size)
-
-  # return tf.where(
-  #     tf.argsort(logits) < tf.reshape(top_k, [-1] + [1] *
-  #                                     (len(logits.shape) - 1)), logits,
-  #     tf.ones_like(logits) * -1e6)
 
 
 def sample_temperature_per_example(logits, temperature, sampling_keep_top_k=-1):
