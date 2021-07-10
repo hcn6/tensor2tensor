@@ -1006,7 +1006,7 @@ def fast_decode_tpu(encoder_output,
                     scope_prefix="body/",
                     use_top_k_with_unique=True,
                     sampling_temperature=0.0,
-                    top_k=-1):
+                    top_k=50):
   """Given encoder output and a symbols to logits function, does fast decoding.
 
   Implements both greedy and beam search decoding for TPU, uses beam search iff
