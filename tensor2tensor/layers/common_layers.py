@@ -2922,9 +2922,12 @@ def _select_top_k_cb_top_p(logits, top_k, top_p):
 
     sorted_indices = tf.argsort(logits, direction='DESCENDING')
     sorted_logits = tf.gather(logits, sorted_indices, axis=-1, batch_dims=1)
-    cumulative_probs = tf.cumsum(tf.nn.softmax(sorted_logits, axis=-1))
+    cumulative_probs = tf.cumsum(tf.nn.softmax(sorted_logits, axis=-1), axis=-1)
     sorted_indices_to_remove = cumulative_probs > top_p
-
+    sorted_indices_to_remove = tf.concat(
+            [tf.zeros_like(sorted_indices_to_remove[:, :1]), sorted_indices_to_remove[:, :-1]],
+            -1,
+        )
     logits_indices_to_remove = scatter_values_on_batch_indices(sorted_indices_to_remove, sorted_indices)
     return tf.where(logits_indices_to_remove, tf.ones_like(logits) * -1e6, logits)
   else:
