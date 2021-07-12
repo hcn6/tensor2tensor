@@ -1093,7 +1093,6 @@ def fast_decode_tpu(encoder_output,
       decoded_ids = decoded_ids[:, :top_beams, 1:]
       scores = scores[:, :top_beams]
   else:  # Greedy
-
     def inner_loop(i, hit_eos, next_id, decoded_ids, cache, log_prob):
       """One step of greedy decoding."""
       logits, cache = symbols_to_logits_fn(next_id, i, cache)
@@ -1153,7 +1152,7 @@ def fast_decode_tpu(encoder_output,
             tf.TensorShape([batch_size]),
         ])
     scores = log_prob
-
+  
   return {"outputs": decoded_ids, "scores": scores}
 
 

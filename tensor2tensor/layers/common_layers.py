@@ -2960,6 +2960,14 @@ def sample_temperature_per_example(logits, temperature, sampling_keep_top_k=-1, 
                        shape_list(logits)[:logits.get_shape().ndims - 1])
   return choices
 
+def sample_temperature_k_times(logits, temperature, k_times, sampling_keep_top_k=-1, top_p=0.95):
+  k_batch_choices = []
+  for i in range(k_times):
+    choices = sample_temperature_per_example(logits, temperature, sampling_keep_top_k, top_p)
+    k_batch_choices.append(choices)
+  choices = tf.stack(k_batch_choices, axis=-1)
+  choices = tf.reshape(choices, [shape_list(logits)[0], k_times])
+  return choices
 
 def ones_matrix_band_part(rows, cols, num_lower, num_upper, out_shape=None):
   """Matrix band part of ones.
