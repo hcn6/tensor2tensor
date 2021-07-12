@@ -630,7 +630,7 @@ class Transformer(t2t_model.T2TModel):
 
     temperature = 0.7
     top_k = 50
-
+    top_p = 0.95
     ret = fast_decode_tpu(
         encoder_output=encoder_output,
         encoder_decoder_attention_bias=encoder_decoder_attention_bias,
@@ -646,7 +646,8 @@ class Transformer(t2t_model.T2TModel):
         force_decode_length=self._decode_hparams.force_decode_length,
         eos_id=eos_id,
         sampling_temperature=temperature,
-        top_k=top_k)
+        top_k=top_k,
+        top_p=top_p)
     if partial_targets is not None:
       if beam_size <= 1 or top_beams <= 1:
         ret["outputs"] = ret["outputs"][:, partial_targets_length:]
@@ -1009,7 +1010,8 @@ def fast_decode_tpu(encoder_output,
                     scope_prefix="body/",
                     use_top_k_with_unique=True,
                     sampling_temperature=0.0,
-                    top_k=50):
+                    top_k=50,
+                    top_p=0.95):
   """Given encoder output and a symbols to logits function, does fast decoding.
 
   Implements both greedy and beam search decoding for TPU, uses beam search iff
@@ -1099,7 +1101,7 @@ def fast_decode_tpu(encoder_output,
       temperature = sampling_temperature
       if hparams.sampling_method == "random_per_example":
         next_id = common_layers.sample_temperature_per_example(
-            logits, temperature, top_k)
+            logits, temperature, top_k, top_p)
       else:
         if hparams.sampling_method == "argmax":
           temperature = 0.0

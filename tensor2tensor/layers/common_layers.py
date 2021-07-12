@@ -2901,8 +2901,45 @@ def _select_top_k(logits, top_k):
   else:
     return logits
 
+def _select_top_k_cb_top_p(logits, top_k, top_p):
+  """Replaces logits, expect the top k highest values, with small number (-1e6).
 
-def sample_temperature_per_example(logits, temperature, sampling_keep_top_k=-1):
+  If k is -1 don't replace anything.
+
+  Args:
+    logits: A `Tensor` of shape [batch_size, ..., vocab_size]
+    top_k: vector of batch size.
+
+  Returns:
+    A `Tensor` with same shape  as logits.
+  """
+  if top_k != -1:
+    vocab_size = logits.shape[-1]
+    
+    k_largest = tf.math.top_k(logits, top_k).values[:, -1:]
+    k_largest = tf.tile(tf.reshape(k_largest, [-1, 1]), [1, vocab_size])
+    logits = tf.where(tf.less(logits, k_largest), tf.ones_like(logits)*-1e6, logits)
+
+    sorted_indices = tf.argsort(logits, direction='DESCENDING')
+    sorted_logits = tf.gather(logits, sorted_indices, axis=-1, batch_dims=1)
+    cumulative_probs = tf.cumsum(tf.nn.softmax(sorted_logits, axis=-1))
+    sorted_indices_to_remove = cumulative_probs > top_p
+
+    logits_indices_to_remove = scatter_values_on_batch_indices(sorted_indices_to_remove, sorted_indices)
+    return tf.where(logits_indices_to_remove, tf.ones_like(logits) * -1e6, logits)
+  else:
+    return logits
+
+def scatter_values_on_batch_indices(values, batch_indices):
+    shape = shape_list(batch_indices)
+    # broadcast batch dim to shape
+    broad_casted_batch_dims = tf.reshape(tf.broadcast_to(tf.expand_dims(tf.range(shape[0]), axis=-1), shape), [1, -1])
+    # transform batch_indices to pair_indices
+    pair_indices = tf.transpose(tf.concat([broad_casted_batch_dims, tf.reshape(batch_indices, [1, -1])], 0))
+    # scatter values to pair indices
+    return tf.scatter_nd(pair_indices, tf.reshape(values, [-1]), shape)
+
+def sample_temperature_per_example(logits, temperature, sampling_keep_top_k=-1, top_p=0.95):
   """Either random sampling with different temperature per example.
 
   Args:
@@ -2912,7 +2949,7 @@ def sample_temperature_per_example(logits, temperature, sampling_keep_top_k=-1):
   Returns:
     a Tensor with one fewer dimension than logits.
   """
-  logits = _select_top_k(logits, sampling_keep_top_k)
+  logits = _select_top_k_cb_top_p(logits, sampling_keep_top_k, top_p)
   logits /= tf.reshape(temperature, [-1] + [1] * (len(logits.shape) - 1))
   reshaped_logits = tf.reshape(logits, [-1, shape_list(logits)[-1]])
   choices = tf.multinomial(reshaped_logits, 1)
