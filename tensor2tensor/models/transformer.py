@@ -1100,32 +1100,28 @@ def fast_decode_tpu(encoder_output,
       log_probs = common_layers.log_prob_from_logits(logits)
       temperature = sampling_temperature
       if hparams.sampling_method == "random_per_example":
-        next_id = common_layers.sample_temperature_k_times(
-            logits, temperature, num_seq, top_k, top_p)
+        next_id = common_layers.sample_temperature_per_example(
+            logits, temperature, top_k, top_p)
       else:
         if hparams.sampling_method == "argmax":
           temperature = 0.0
         next_id = common_layers.sample_with_temperature(logits, temperature,
                                                         top_k)
-      k_log_prob = []
-      for i in range(num_seq):
-        log_prob_indices = tf.stack([tf.range(tf.to_int64(batch_size)), next_id[:, i]],
-                                        axis=1)
-        k_log_prob.append(tf.gather_nd(log_probs, log_prob_indices))
-      log_prob += tf.stack(k_log_prob, axis=-1) * (1 - tf.to_float(hit_eos))
 
-      
+      log_prob_indices = tf.stack([tf.range(tf.to_int64(batch_size)), next_id],
+                                  axis=1)
+      log_prob += tf.gather_nd(
+          log_probs, log_prob_indices) * (1 - tf.to_float(hit_eos))
       # Note(thangluong): we purposely update hit_eos after aggregating log_prob
       # There is a subtle detail here that we want to include log_probs up to
       # (and inclusive of) the first eos generated, but not subsequent tokens.
       hit_eos |= tf.equal(next_id, eos_id)
 
-      next_id = tf.expand_dims(next_id, axis=-1)
-      decoded_ids = tf.transpose(decoded_ids, perm=[2,0,1])
+      next_id = tf.expand_dims(next_id, axis=1)
+      decoded_ids = tf.transpose(decoded_ids)
       decoded_ids = inplace_ops.alias_inplace_update(
-                decoded_ids, i, tf.squeeze(next_id, axis=-1))
-      decoded_ids = tf.transpose(decoded_ids, perm=[1,2,0])
-      
+          decoded_ids, i, tf.squeeze(next_id, axis=1))
+      decoded_ids = tf.transpose(decoded_ids)
       return i + 1, hit_eos, next_id, decoded_ids, cache, log_prob
 
     def is_not_finished(i, hit_eos, *_):
@@ -1134,10 +1130,10 @@ def fast_decode_tpu(encoder_output,
         finished |= tf.reduce_all(hit_eos)
       return tf.logical_not(finished)
 
-    decoded_ids = tf.zeros([batch_size, num_seq, decode_length], dtype=tf.int64)
-    hit_eos = tf.fill([batch_size, num_seq], False)
-    next_id = sos_id * tf.ones([batch_size, num_seq, 1], dtype=tf.int64)
-    initial_log_prob = tf.zeros([batch_size, num_seq], dtype=tf.float32)
+    decoded_ids = tf.zeros([batch_size, decode_length], dtype=tf.int64)
+    hit_eos = tf.fill([batch_size], False)
+    next_id = sos_id * tf.ones([batch_size, 1], dtype=tf.int64)
+    initial_log_prob = tf.zeros([batch_size], dtype=tf.float32)
 
     def compute_cache_shape_invariants(tensor):
       return tf.TensorShape(tensor.shape.as_list())
@@ -1150,11 +1146,11 @@ def fast_decode_tpu(encoder_output,
         ],
         shape_invariants=[
             tf.TensorShape([]),
-            tf.TensorShape([batch_size, num_seq]),
-            tf.TensorShape([batch_size, num_seq, 1]),
-            tf.TensorShape([batch_size, num_seq, decode_length]),
+            tf.TensorShape([batch_size]),
+            tf.TensorShape([batch_size, 1]),
+            tf.TensorShape([batch_size, decode_length]),
             nest.map_structure(compute_cache_shape_invariants, cache),
-            tf.TensorShape([batch_size, num_seq]),
+            tf.TensorShape([batch_size]),
         ])
     scores = log_prob
   
