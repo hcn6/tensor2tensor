@@ -628,8 +628,8 @@ class Transformer(t2t_model.T2TModel):
     # top_k = features.get("sampling_keep_top_k",
     #                      getattr(hparams, "sampling_keep_top_k", -1))
 
-    temperature = 0.7
-    top_k = 50
+    temperature = 0.9
+    top_k = 669
     top_p = 0.95
     ret = fast_decode_tpu(
         encoder_output=encoder_output,
