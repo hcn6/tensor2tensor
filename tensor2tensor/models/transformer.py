@@ -1868,7 +1868,7 @@ def transformer_base_v1():
   hparams.add_hparam("num_heads", 8)
   hparams.add_hparam("attention_key_channels", 0)
   hparams.add_hparam("attention_value_channels", 0)
-  hparams.add_hparam("ffn_layer", "dense_relu_dense")
+  hparams.add_hparam("ffn_layer", "gru")
   hparams.add_hparam("parameter_attention_key_channels", 0)
   hparams.add_hparam("parameter_attention_value_channels", 0)
   # All hyperparameters ending in "dropout" are automatically set to 0.0

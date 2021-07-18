@@ -302,6 +302,8 @@ def transformer_ffn_layer(x,
   relu_dropout_broadcast_dims = (
       common_layers.comma_separated_string_to_integer_list(
           getattr(hparams, "relu_dropout_broadcast_dims", "")))
+  if ffn_layer == "gru":
+    return common_layers.gated_linear_unit_layer(x)
   if ffn_layer == "conv_hidden_relu":
     # Backwards compatibility
     ffn_layer = "dense_relu_dense"
