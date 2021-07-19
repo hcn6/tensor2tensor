@@ -2219,7 +2219,12 @@ def variant_gelu_gated_linear_unit_layer(x, name=None):
     x, gating_x = tf.split(x, 2, axis=-1)
     return x * gelu(gating_x)
     
-
+def variant_swi_gated_linear_unit_layer(x, name=None):
+  with tf.variable_scope(name, default_name="gelu_glu_layer", values=[x]):
+    depth = shape_list(x)[-1]
+    x = layers().Dense(depth * 2, activation=None)(x)
+    x, gating_x = tf.split(x, 2, axis=-1)
+    return x * gating_x * tf.nn.sigmoid(gating_x)
 
 def sru(x,
         num_layers=2,
